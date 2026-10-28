@@ -14,7 +14,7 @@ from functools import lru_cache
 
 from relay.config import ROOT
 from relay.contracts import PRIORITY_RANK, Ticket
-from relay.text import any_phrase, normalize
+from relay.text import any_phrase, normalize, reference_ids
 
 LEGAL_THREAT = [
     r"\bconsumer (court|forum|commission)\b",
@@ -36,6 +36,17 @@ MONEY_DISPUTE = [
 ]
 
 
+SAFETY_RISK = [
+    r"\b(accident|injur(y|ed|ies)|hurt|fell off|crashed into|hospital|unsafe|dangerous|caught fire|smoke)\b",
+    r"\bbrakes? (failed|fail|not working|stopped working)\b",
+]
+
+REQUEST = [
+    r"\b(please|kindly|can you|could you|can i|can we|i want|we want|i need|we need|help me|let me know)\b",
+    r"\b(kab|kya|kaise|kyun|chahiye)\b",
+]
+
+
 @dataclass
 class TenantPolicy:
     tenant: str
@@ -49,6 +60,8 @@ class TenantPolicy:
     no_clinical_advice: bool = False
     owners: dict[str, str] = field(default_factory=dict)
     security_owner: str = "security-oncall"
+    # Which category each KB article answers. Lets retrieval act as a second classifier.
+    kb_categories: dict[str, str] = field(default_factory=dict)
 
     # -- facts about a ticket ------------------------------------------------
 
@@ -57,6 +70,17 @@ class TenantPolicy:
 
     def money_dispute(self, ticket: Ticket) -> list[str]:
         return any_phrase(f"{ticket.subject} {ticket.body}", MONEY_DISPUTE)
+
+    def safety_risk(self, ticket: Ticket) -> list[str]:
+        return any_phrase(f"{ticket.subject} {ticket.body}", SAFETY_RISK)
+
+    def asks_something(self, ticket: Ticket) -> bool:
+        """A question or a request, as opposed to thanks or feedback."""
+        text = f"{ticket.subject} {ticket.body}"
+        return "?" in text or bool(any_phrase(text, REQUEST))
+
+    def mentions_reference(self, ticket: Ticket) -> bool:
+        return bool(reference_ids(f"{ticket.subject} {ticket.body}"))
 
     def clinical_signals(self, ticket: Ticket) -> tuple[list[str], bool]:
         """Clinical terms present, and whether any severity marker is present."""

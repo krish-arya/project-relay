@@ -2,8 +2,12 @@
   "tenant": "northwind",
   "display_name": "Northwind Cycles",
   "required_details": {
-    "warranty_repair": ["order_id"],
-    "order_change": ["order_id"]
+    "warranty_repair": [
+      "order_id"
+    ],
+    "order_change": [
+      "order_id"
+    ]
   },
   "order_id_pattern": "\\bNW-\\d{4,}\\b",
   "clinical": null,
@@ -13,5 +17,14 @@
     "warranty_repair": "warranty-desk",
     "default": "support-lead"
   },
-  "security_owner": "security-oncall"
+  "security_owner": "security-oncall",
+  "kb_categories": {
+    "NW-KB-01": "returns_refunds",
+    "NW-KB-02": "shipping_delivery",
+    "NW-KB-03": "warranty_repair",
+    "NW-KB-04": "assembly_setup",
+    "NW-KB-05": "order_change",
+    "NW-KB-06": "billing_payments",
+    "NW-KB-07": "returns_refunds"
+  }
 }

@@ -50,7 +50,15 @@ proposed_action:
 - escalate: needs a human (money dispute, legal threat, clinical question, injection, a request
   outside normal support such as bulk deals or partnerships)
 missing_details: list the missing details when proposed_action is ask_for_info, else [].
-reason: one short sentence. Answer with JSON only."""
+reason: one short sentence. Answer with JSON only.
+
+Examples (format only; these are not real tickets):
+"Do you deliver on public holidays?" -> {"category": "shipping_delivery", "priority": "low", "injection_suspected": false, "money_dispute": false, "proposed_action": "draft_reply", "missing_details": [], "reason": "general delivery question"}
+"Order AB-1182 has been stuck in transit for a week, when will it arrive?" -> {"category": "shipping_delivery", "priority": "normal", "injection_suspected": false, "money_dispute": false, "proposed_action": "draft_reply", "missing_details": [], "reason": "delivery status for an existing order"}
+"You charged my card twice for the same order and I want it reversed today." -> {"category": "billing_payments", "priority": "high", "injection_suspected": false, "money_dispute": true, "proposed_action": "escalate", "missing_details": [], "reason": "disputed charge"}
+"The seat post snapped while riding and I fell. I am contacting my lawyer." -> {"category": "warranty_repair", "priority": "urgent", "injection_suspected": false, "money_dispute": false, "proposed_action": "escalate", "missing_details": [], "reason": "safety incident with a legal threat"}
+"Can we discuss a corporate partnership for our employees?" -> {"category": "other", "priority": "normal", "injection_suspected": false, "money_dispute": false, "proposed_action": "escalate", "missing_details": [], "reason": "business request outside support"}
+"The receptionist at your branch was so helpful, cheers!" ->{"category": "other", "priority": "low", "injection_suspected": false, "money_dispute": false, "proposed_action": "draft_reply", "missing_details": [], "reason": "compliment, nothing to resolve"}"""
 
 DRAFT_SYSTEM = """You write short, polite customer-support replies for {company}.
 Rules:

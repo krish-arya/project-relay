@@ -48,7 +48,19 @@ class Routing:
     draft_mode: str | None  # reply | ask_for_info | acknowledge
 
 
-def route(ticket: Ticket, tri: TriageResult, passages: list[Passage], policy: TenantPolicy, min_score: float) -> Routing:
+def retrieval_category(passages: list[Passage], policy: TenantPolicy, min_score: float, margin: float) -> str | None:
+    """Category of the best KB match, only when retrieval is decisive (internal articles count: routing only)."""
+    if not passages:
+        return None
+    top = passages[0]
+    runner_up = passages[1].score if len(passages) > 1 else 0.0
+    if top.score >= min_score and top.score - runner_up >= margin:
+        return policy.kb_categories.get(top.kb_id)
+    return None
+
+
+def route(ticket: Ticket, tri: TriageResult, passages: list[Passage], policy: TenantPolicy, min_score: float,
+          margin: float = 0.04) -> Routing:
     """Pure function: triage proposal + deterministic signals + retrieval -> action."""
     text = f"{ticket.subject}\n{ticket.body}"
     inj_report = injection.score(text)
@@ -60,13 +72,28 @@ def route(ticket: Ticket, tri: TriageResult, passages: list[Passage], policy: Te
 
     category, priority = tri.category, tri.priority
     reasons: list[str] = []
+    kb_category = retrieval_category(passages, policy, min_score, margin)
+    # A model "clinical" label is kept unless clinical terms are absent AND the KB
+    # match is decisive: when unsure, the safe failure is escalating to a clinician.
+    model_clinical_unsupported = category == "clinical" and not clinical_terms
+    if kb_category and kb_category != category and (category != "clinical" or model_clinical_unsupported):
+        reasons.append(f"category {category}->{kb_category} (decisive KB match {passages[0].kb_id})")
+        category = kb_category
+    served = set(policy.kb_categories.values())
+    if category not in served and category not in ("other", "clinical"):
+        reasons.append(f"category {category}->other (not a {policy.tenant} category)")
+        category = "other"
     if clinical_terms and category != "clinical":
         reasons.append(f"category {category}->clinical (terms: {', '.join(clinical_terms[:3])})")
         category = "clinical"
     if policy.clinical is None and category == "clinical":
         category = "other"
 
-    if legal:
+    safety = policy.safety_risk(ticket)
+    if priority == "urgent" and not (legal or severe or safety):
+        # Brief: urgent means a safety risk or a legal threat. Without evidence of either, cap at high.
+        priority = "high"
+    if legal or safety:
         priority = raise_priority(priority, "urgent")
     if category == "clinical" and severe:
         priority = raise_priority(priority, "urgent")
@@ -74,6 +101,8 @@ def route(ticket: Ticket, tri: TriageResult, passages: list[Passage], policy: Te
         priority = raise_priority(priority, "high")
     if category == "clinical":
         priority = raise_priority(priority, "normal")
+    if category == "order_change":
+        priority = raise_priority(priority, "high")  # time-sensitive: only possible until packing
 
     top_public = max((p.score for p in passages if not p.internal), default=0.0)
     covered = top_public >= min_score
@@ -93,11 +122,17 @@ def route(ticket: Ticket, tri: TriageResult, passages: list[Passage], policy: Te
         missing = policy.missing_details(ticket, category)
         if missing:
             action, draft_mode = "ask_for_info", "ask_for_info"
+            if "written_consent" in missing:
+                priority = raise_priority(priority, "high")  # someone else's data: a privacy concern
             reasons.append(f"missing required details: {', '.join(missing)}")
         elif tri.proposed_action == "escalate":
             action = "escalate"
             reasons.append(f"triage proposed escalation: {tri.reason}")
-        elif category == "other" and not covered:
+        elif category == "other" and policy.asks_something(ticket):
+            action = "escalate"
+            reasons.append("request outside every KB category: the KB does not cover it")
+        elif category == "other":
+            # Nothing is asked (thanks, feedback): acknowledge without stating any policy.
             action, draft_mode = "draft_reply", "acknowledge"
             reasons.append("no request to answer: acknowledgement only")
         elif not covered:
@@ -105,6 +140,11 @@ def route(ticket: Ticket, tri: TriageResult, passages: list[Passage], policy: Te
             reasons.append(f"KB does not cover the request (best score {top_public:.2f} < {min_score})")
         else:
             action, draft_mode = "draft_reply", "reply"
+
+    if action == "draft_reply" and priority == "normal" and not policy.mentions_reference(ticket):
+        # Brief: low = general information. A question not tied to any order or patient is that.
+        priority = "low"
+        reasons.append("priority normal->low (general question, no order or patient reference)")
     return Routing(category, priority, action, is_injection, reasons, missing, draft_mode)
 
 
@@ -161,11 +201,13 @@ def run(
         trace["steps"].append(
             {"agent": "retrieval", "result": [{"kb_id": p.kb_id, "score": p.score, "internal": p.internal} for p in passages]}
         )
-        r = route(ticket, tri, passages, policy, settings.min_score)
+        r = route(ticket, tri, passages, policy, settings.min_score, settings.category_margin)
         trace["routing"] = {"action": r.action, "reasons": r.reasons, "missing": r.missing}
         # Internal articles may inform routing (recorded in the DB trace only), never a draft.
         trace["internal_hits"] = [p.kb_id for p in passages if p.internal and p.score >= settings.min_score]
-        covering = [p.kb_id for p in passages if not p.internal and p.score >= settings.min_score][:1]
+        covering = [] if r.category == "other" else [
+            p.kb_id for p in passages if not p.internal and p.score >= settings.min_score
+        ][:1]
 
         if r.action == "escalate":
             return finish(r, action="escalate", status="escalated", kb_refs=covering, draft=None,

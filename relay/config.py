@@ -59,6 +59,7 @@ class Settings:
     breaker_cooldown_s: float
     top_k: int
     min_score: float
+    category_margin: float
     operator: str
 
 
@@ -96,5 +97,6 @@ def load_settings() -> Settings:
         breaker_cooldown_s=_float("BREAKER_COOLDOWN_S", 30.0),
         top_k=_int("RETRIEVAL_TOP_K", 3),
         min_score=_float("RETRIEVAL_MIN_SCORE", 0.55),
+        category_margin=_float("RETRIEVAL_CATEGORY_MARGIN", 0.04),
         operator=os.environ.get("RELAY_OPERATOR", "operator"),
     )
