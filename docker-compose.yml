@@ -1,0 +1,19 @@
+services:
+  db:
+    image: pgvector/pgvector:pg17
+    container_name: relay-db
+    environment:
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-relay}
+      POSTGRES_DB: relay
+    ports:
+      - "${RELAY_PG_PORT:-5433}:5432"
+    volumes:
+      - relay-pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d relay"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+volumes:
+  relay-pgdata:
