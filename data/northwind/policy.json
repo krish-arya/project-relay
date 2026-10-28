@@ -9,7 +9,12 @@
       "order_id"
     ]
   },
-  "order_id_pattern": "\\bNW-\\d{4,}\\b",
+  "ask_together": {
+    "warranty_repair": [
+      "photos"
+    ]
+  },
+  "order_id_pattern":"\\bNW-\\d{4,}\\b",
   "clinical": null,
   "owners": {
     "returns_refunds": "refunds-team",

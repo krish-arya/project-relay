@@ -62,6 +62,7 @@ class TenantPolicy:
     security_owner: str = "security-oncall"
     # Which category each KB article answers. Lets retrieval act as a second classifier.
     kb_categories: dict[str, str] = field(default_factory=dict)
+    ask_together: dict[str, list[str]] = field(default_factory=dict)
 
     # -- facts about a ticket ------------------------------------------------
 
@@ -113,6 +114,10 @@ class TenantPolicy:
                 missing.append("patient_identity")
         if category in self.third_party_categories and self.third_party_subject(ticket):
             missing.append("written_consent")
+        if missing:
+            # Details we cannot verify from text (tickets carry no attachments) are requested
+            # alongside, so the customer is asked once, not twice.
+            missing += [d for d in self.ask_together.get(category, []) if d not in missing]
         return missing
 
     def owner(self, category: str, injection: bool) -> str:

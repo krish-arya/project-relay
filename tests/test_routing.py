@@ -58,7 +58,7 @@ def test_legal_threat_escalates_urgent():
 def test_missing_order_id_asks_instead_of_guessing():
     t = make_ticket("1", "northwind", "My frame cracked after a few months. What now?")
     r = route(t, tri(category="warranty_repair"), passages("NW-KB-03"), NW, 0.5)
-    assert r.action == "ask_for_info" and r.missing == ["order_id"]
+    assert r.action == "ask_for_info" and r.missing == ["order_id", "photos"]
 
 
 def test_someone_elses_records_need_consent():
