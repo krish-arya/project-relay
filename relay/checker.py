@@ -85,7 +85,9 @@ def numbers(text: str) -> set[str]:
     return {n.replace(",", "") for n in NUMBER.findall(KB_ID.sub(" ", text))}
 
 
-def check(draft: DraftResult, ticket: Ticket, ctx: CheckContext, policy: TenantPolicy) -> CheckResult:
+def check(draft: DraftResult, ticket: Ticket, ctx: CheckContext, policy: TenantPolicy,
+          shown_ids: set[str] | None = None) -> CheckResult:
+    """shown_ids: passages the drafter was given; their numbers count as grounded even if uncited."""
     text = draft.reply
     norm = normalize(text)
     reasons: list[str] = []
@@ -132,10 +134,10 @@ def check(draft: DraftResult, ticket: Ticket, ctx: CheckContext, policy: TenantP
     for ref in sorted(reference_ids(text) - own - set(KB_ID.findall(text))):
         reasons.append(f"mentions an ID not in this ticket: {ref}")
 
-    # 7. Every number (days, amounts, hours) must come from a cited passage or the ticket itself.
-    #    Small drafters most often go wrong by inventing or mixing up figures.
+    # 7. Every number (days, amounts, hours) must come from a passage the drafter cited or was
+    #    shown, or from the ticket itself. Small drafters most often go wrong by inventing figures.
     grounded = numbers(f"{ticket.subject} {ticket.body} {ticket.customer_ref}")
-    for kb_id in cited & ctx.public_ids:
+    for kb_id in (cited | (shown_ids or set())) & ctx.public_ids:
         grounded |= numbers(ctx.public_texts.get(kb_id, ""))
     for n in sorted(numbers(text) - grounded, key=lambda x: (len(x), x)):
         reasons.append(f"number not found in cited passages or ticket: {n}")

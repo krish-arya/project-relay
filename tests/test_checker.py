@@ -103,8 +103,11 @@ def test_numbers_must_come_from_cited_passage_or_ticket():
     assert run("Returns are accepted within 30 days [NW-KB-01].", ["NW-KB-01"]).passed
     r = run("Returns are accepted within 45 days [NW-KB-01].", ["NW-KB-01"])
     assert any("number not found" in x and "45" in x for x in r.reasons)
-    # A number from a passage that is not cited is not grounded either.
+    # A number from a passage that was neither cited nor shown to the drafter is not grounded.
     assert not run("Assembly is free within 15 days.").passed
+    shown = check(DraftResult(reply="Assembly is free within 15 days."), TICKET, nw_ctx(), load_policy("northwind"),
+                  shown_ids={"NW-KB-04"})
+    assert shown.passed, shown.reasons
 
 
 def test_money_promises_blocked():

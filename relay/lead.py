@@ -222,6 +222,9 @@ def run(
             return finish(r, action="escalate", status="escalated", kb_refs=covering, draft=None,
                           case=_case(policy, r, "checker", "; ".join(r.reasons)))
         refs = cited_refs(result, {p.kb_id for p in passages if not p.internal})
+        if not refs and r.draft_mode == "reply":
+            # The model answered from its passages but forgot to cite: record what it was shown.
+            refs = sorted(trace["drafter_passages"])
         return finish(r, action=r.action, status="pending_approval", kb_refs=refs, draft=result.reply.strip())
 
     except BudgetExceeded as e:
@@ -277,7 +280,7 @@ def _draft_and_check(
             company=policy.display_name, mode=r.draft_mode or "reply", missing=r.missing,
             feedback=notes or None, no_clinical_advice=policy.no_clinical_advice,
         )
-        verdict = check(result, ticket, check_ctx, policy)
+        verdict = check(result, ticket, check_ctx, policy, shown_ids={p.kb_id for p in relevant})
         trace["steps"].append({"agent": "checker", "attempt": attempt, "passed": verdict.passed, "reasons": verdict.reasons})
         if verdict.passed:
             return result, []
