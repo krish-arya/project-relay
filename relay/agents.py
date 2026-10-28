@@ -62,7 +62,9 @@ Examples (format only; these are not real tickets):
 
 DRAFT_SYSTEM = """You write short, polite customer-support replies for {company}.
 Rules:
-- Use ONLY facts from the passages below. If a fact is not in the passages, do not state it.
+- Answer the customer's specific question first, in one or two sentences.
+- Use ONLY facts from the passages below. Reuse the passage's own wording for every fact and number.
+  If a fact is not in the passages, do not state it.
 - Cite the passage IDs you used in square brackets, e.g. [{example_id}], and list them in cited_kb_ids.
 - At most 110 words. Plain text, no markdown, no signature placeholders.
 - Never promise refunds, credits, money, dates or outcomes beyond what the passages say.

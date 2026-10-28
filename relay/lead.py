@@ -27,6 +27,7 @@ from relay.contracts import Decision, DraftResult, Passage, Ticket, TriageResult
 from relay.db import tenant_tx
 from relay.gateway import BudgetExceeded, CallContext, Gateway, InvalidOutput
 from relay.policy import SEVERITY, TenantPolicy, load_policy, raise_priority
+from relay.text import KB_ID
 
 
 @dataclass
@@ -220,7 +221,7 @@ def run(
             r.reasons.append("draft failed the checker twice: " + "; ".join(check_reasons))
             return finish(r, action="escalate", status="escalated", kb_refs=covering, draft=None,
                           case=_case(policy, r, "checker", "; ".join(r.reasons)))
-        refs = sorted(set(result.cited_kb_ids))
+        refs = cited_refs(result, {p.kb_id for p in passages if not p.internal})
         return finish(r, action=r.action, status="pending_approval", kb_refs=refs, draft=result.reply.strip())
 
     except BudgetExceeded as e:
@@ -232,6 +233,24 @@ def run(
         routing = r or Routing("other", "normal", "escalate", False, [], [], None)
         return finish(r, action="escalate", status="failed", kb_refs=[], draft=None, failure=e.error_class,
                       case=_case(policy, routing, "invalid_output", f"model output invalid after repair ({e.error_class})"))
+
+
+FOCUS_WINDOW = 0.03
+FOCUS_MAX = 2
+
+
+def focus(passages: list[Passage]) -> list[Passage]:
+    """Public passages close to the best match. Small drafters mix up loosely related passages,
+    so a passage scoring well below the best one is left out rather than offered as context."""
+    public = sorted((p for p in passages if not p.internal), key=lambda p: p.score, reverse=True)
+    if not public:
+        return []
+    return [p for p in public if p.score >= public[0].score - FOCUS_WINDOW][:FOCUS_MAX]
+
+
+def cited_refs(result: DraftResult, public_ids: set[str]) -> list[str]:
+    """KB IDs the draft actually cites, from the structured list and inline [ID] markers."""
+    return sorted((set(result.cited_kb_ids) | set(KB_ID.findall(result.reply))) & public_ids)
 
 
 def _draft_and_check(
@@ -248,11 +267,13 @@ def _draft_and_check(
     """Draft, check, and redraft once with the checker's reasons if it fails."""
     with tenant_tx(conn, ticket.tenant) as cur:
         check_ctx = load_context(cur, ticket.tenant)
+    relevant = focus(passages)
+    trace["drafter_passages"] = [p.kb_id for p in relevant]
     notes = list(feedback or [])
     reasons: list[str] = []
     for attempt in (1, 2):
         result = agents.draft(
-            gw, ticket, passages, ctx,
+            gw, ticket, relevant, ctx,
             company=policy.display_name, mode=r.draft_mode or "reply", missing=r.missing,
             feedback=notes or None, no_clinical_advice=policy.no_clinical_advice,
         )

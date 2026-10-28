@@ -8,7 +8,7 @@ tenants' KB text (via relay_foreign_fingerprints, which never returns text).
 from __future__ import annotations
 
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 import psycopg
 
@@ -20,6 +20,7 @@ MAX_WORDS = 150
 # Overlapping 5-word shingles needed to call text "copied". One shared 5-word
 # phrase can be coincidence; two is not.
 SHINGLE_HITS = 2
+NUMBER = re.compile(r"\d[\d,]*(?:\.\d+)?")
 
 CLINICAL_ADVICE = [
     r"\bdiagnos(is|es|e|ed)\b",
@@ -50,6 +51,7 @@ class CheckContext:
     internal_shingles: set[str]
     other_tenant_names: list[str]
     foreign_shingles: set[str]
+    public_texts: dict[str, str] = field(default_factory=dict)
 
 
 def load_context(cur: psycopg.Cursor, tenant_id: str) -> CheckContext:
@@ -74,7 +76,13 @@ def load_context(cur: psycopg.Cursor, tenant_id: str) -> CheckContext:
         internal_shingles=internal_sh,
         other_tenant_names=names,
         foreign_shingles=foreign,
+        public_texts={r["id"]: r["body"] for r in rows if not r["internal"]},
     )
+
+
+def numbers(text: str) -> set[str]:
+    """Numbers in text, ignoring KB IDs; '42,000' and '42000' compare equal."""
+    return {n.replace(",", "") for n in NUMBER.findall(KB_ID.sub(" ", text))}
 
 
 def check(draft: DraftResult, ticket: Ticket, ctx: CheckContext, policy: TenantPolicy) -> CheckResult:
@@ -124,7 +132,15 @@ def check(draft: DraftResult, ticket: Ticket, ctx: CheckContext, policy: TenantP
     for ref in sorted(reference_ids(text) - own - set(KB_ID.findall(text))):
         reasons.append(f"mentions an ID not in this ticket: {ref}")
 
-    # 7. No promises of money.
+    # 7. Every number (days, amounts, hours) must come from a cited passage or the ticket itself.
+    #    Small drafters most often go wrong by inventing or mixing up figures.
+    grounded = numbers(f"{ticket.subject} {ticket.body} {ticket.customer_ref}")
+    for kb_id in cited & ctx.public_ids:
+        grounded |= numbers(ctx.public_texts.get(kb_id, ""))
+    for n in sorted(numbers(text) - grounded, key=lambda x: (len(x), x)):
+        reasons.append(f"number not found in cited passages or ticket: {n}")
+
+    # 8. No promises of money.
     for pat in MONEY_PROMISE:
         m = re.search(pat, norm)
         if m:

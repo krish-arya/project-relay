@@ -23,6 +23,8 @@ def nw_ctx() -> CheckContext:
         internal_shingles=shingles(NW_INTERNAL),
         other_tenant_names=["Harbor Dental", "Harbor"],
         foreign_shingles=shingles(HD_PUBLIC),
+        public_texts={"NW-KB-01": "Unused items can be returned within 30 days of delivery with the original invoice.",
+                      "NW-KB-04": "Free assembly is available at any partner store within 15 days of delivery."},
     )
 
 
@@ -95,6 +97,14 @@ def test_ids_of_other_customers_blocked():
     r = run("Your order NW-55821 and order NW-55902 are on the way.")
     assert any("NW-55902" in x for x in r.reasons)
     assert not any("NW-55821" in x for x in r.reasons)
+
+
+def test_numbers_must_come_from_cited_passage_or_ticket():
+    assert run("Returns are accepted within 30 days [NW-KB-01].", ["NW-KB-01"]).passed
+    r = run("Returns are accepted within 45 days [NW-KB-01].", ["NW-KB-01"])
+    assert any("number not found" in x and "45" in x for x in r.reasons)
+    # A number from a passage that is not cited is not grounded either.
+    assert not run("Assembly is free within 15 days.").passed
 
 
 def test_money_promises_blocked():
