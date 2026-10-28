@@ -35,7 +35,20 @@ in `eval/NOTES.md` was written by hand and is marked as such.
    `Worker.run_until_empty`. With the cap, the same mutation fails 6 tests cleanly.
 5. **A silent no-op edit.** A `sed` command meant to fix a zero-width-character probe matched nothing
    (shell escaping). Caught because the follow-up `grep` count was 0; redone with a Python replace.
-6. **Misleading threshold.** The first assumption was that `RETRIEVAL_MIN_SCORE` would separate covered from
+6. **Empty `kb_refs` and mixed-up drafts.** The first full demo looked fine in the approval-queue summary.
+   Reading every draft in full showed three problems:
+   - `kb_refs` was empty on most drafts, because the model cited `[NW-KB-01]` inline and left
+     `cited_kb_ids` empty.
+   - HD-T06 answered a root-canal price question with cancellation-fee text, because the drafter had been
+     given three loosely related passages.
+   - A wrong figure passed the checker.
+
+   The fix: give the drafter only passages close to the best match, record inline citations, and add a
+   checker rule that every number must come from a passage or the ticket.
+7. **That number rule was too strict at first.** It escalated a correct HD-T06 draft that quoted "INR 600"
+   from the only passage the drafter had seen but forgot to cite. Caught with `relay show HD-T06`, which
+   prints the checker's reason. Numbers from passages shown to the drafter now count as grounded.
+8. **Misleading threshold.** The first assumption was that `RETRIEVAL_MIN_SCORE` would separate covered from
    uncovered requests. Printing the scores showed nomic-embed-text compresses everything into 0.5–0.9, so it
    can't. This is documented in DECISIONS §3 rather than hidden.
 

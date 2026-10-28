@@ -71,7 +71,19 @@ If validation fails, it makes one repair call that includes the validation error
    - an order change (time-sensitive) or a third-party records request → high
    - a normal-priority draft with no order or patient reference → low (general information)
 
-For `draft_reply` and `ask_for_info`, the lead agent calls the drafter and then the checker. On failure it redrafts
+For `draft_reply` and `ask_for_info`, the lead agent gives the drafter at most two public passages that score
+within 0.03 of the best match (small models mix up loosely related passages), then calls the checker.
+Checker rules:
+- cited IDs exist in this tenant's KB and are public
+- no canary code and no internal text
+- no other tenant's name or content
+- no clinical or medication language (Harbor)
+- 150 words at most
+- no IDs that are not in the ticket
+- every number comes from a passage the drafter saw, or from the ticket
+- no money promises
+
+The lead agent calls the drafter and then the checker. On failure it redrafts
 once, passing the checker's reasons. A second failure means escalation (case source `checker`).
 
 ## Data model
