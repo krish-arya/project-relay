@@ -1,0 +1,31 @@
+{
+  "tenant": "harbor",
+  "display_name": "Harbor Dental",
+  "required_details": {
+    "records_privacy": ["patient_identity"]
+  },
+  "order_id_pattern": null,
+  "subject_id_pattern": "\\bHD-(\\d{3,})\\b",
+  "customer_ref_pattern": "^P-(\\d{3,})$",
+  "third_party_categories": ["records_privacy"],
+  "clinical": {
+    "terms": [
+      "\\bpain(ful)?\\b", "\\bach(e|ing)\\b", "\\bswell(ing|ed|s)?\\b", "\\bswollen\\b", "\\bbleed(ing|s)?\\b",
+      "\\bblood\\b", "\\bmedicin(e|es)\\b", "\\bmedication\\b", "\\bibuprofen\\b", "\\bparacetamol\\b",
+      "\\bantibiotics?\\b", "\\bpainkillers?\\b", "\\bdos(e|age)\\b", "\\binfect(ion|ed)\\b", "\\bfever\\b",
+      "\\bnumb(ness)?\\b", "\\bpus\\b", "\\bsensitiv(e|ity)\\b", "\\bis (that|this|it) normal\\b"
+    ],
+    "severe_terms": [
+      "\\bsevere\\b", "\\bunbearable\\b", "\\bgetting worse\\b", "\\bworse\\b", "\\bwon'?t stop\\b",
+      "\\bwill not stop\\b", "\\bcan'?t breathe\\b", "\\bface\\b.{0,30}\\bswell", "\\bswell.{0,30}\\bface\\b", "\\bfacial swelling\\b"
+    ]
+  },
+  "no_clinical_advice": true,
+  "owners": {
+    "clinical": "on-duty-dentist",
+    "billing_payments": "finance-desk",
+    "records_privacy": "records-officer",
+    "default": "front-desk"
+  },
+  "security_owner": "security-oncall"
+}

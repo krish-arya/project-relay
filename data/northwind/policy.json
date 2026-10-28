@@ -1,0 +1,17 @@
+{
+  "tenant": "northwind",
+  "display_name": "Northwind Cycles",
+  "required_details": {
+    "warranty_repair": ["order_id"],
+    "order_change": ["order_id"]
+  },
+  "order_id_pattern": "\\bNW-\\d{4,}\\b",
+  "clinical": null,
+  "owners": {
+    "returns_refunds": "refunds-team",
+    "billing_payments": "payments-team",
+    "warranty_repair": "warranty-desk",
+    "default": "support-lead"
+  },
+  "security_owner": "security-oncall"
+}
