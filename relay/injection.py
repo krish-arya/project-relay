@@ -42,14 +42,18 @@ FEATURES: list[tuple[str, int, re.Pattern[str]]] = [
     (
         "persona_switch",
         2,
-        re.compile(r"\byou are now\b|\bact as (an? )?(admin|administrator|developer|system)|\b(admin|developer|god|debug|jailbreak) mode\b|\bnew instructions\b"),
+        re.compile(
+            r"\byou are now\b|\bact as (an? )?(admin|administrator|developer|system)|\b(admin|developer|god|debug|jailbreak) mode\b"
+            r"|\bnew instructions\b|\bpretend (you are|to be)\b|\bwithout (any )?(restrictions|filters|rules)\b|\bfrom now on you\b"
+        ),
     ),
     (
         "reveal_hidden",
         2,
         re.compile(
-            r"\b(print|reveal|show|include|output|repeat|dump|leak|paste|share)\b.{0,40}"
-            r"\b(system prompt|internal|staff[- ]only|confidential|hidden|secret|instructions|notes|other (customer|patient)s?'?|previous (customer|patient))"
+            r"\b(print|reveal|show|tell|include|output|repeat|dump|leak|paste|share|list)\b.{0,40}"
+            r"\b(system prompt|your (instructions|prompt|rules)|internal|staff[- ]only|staff notes|confidential|hidden|secret"
+            r"|other (customer|patient)s?'?|previous (customer|patient)|all (customers|patients))"
         ),
     ),
     (
@@ -57,6 +61,8 @@ FEATURES: list[tuple[str, int, re.Pattern[str]]] = [
         2,
         re.compile(r"\b(approve|issue|grant|authori[sz]e|transfer|send)\b.{0,25}\b(full )?(refund|credit|payment|money|discount)\b.{0,40}\b(to|into)\b"),
     ),
+    # Claims of authority the sender cannot have: "as authorised by your admin team".
+    ("claimed_authority", 1, re.compile(r"\b(authori[sz]ed|approved|instructed|ordered) by (your|the) (admin|manager|supervisor|system|developer)")),
     ("other_party_records", 1, re.compile(r"\b(details|records|data)\b.{0,20}\b(of|for)\b.{0,10}\b(patient|customer|user)\s+[a-z]{1,4}-\d{3,}")),
     ("separator_fence", 1, re.compile(r"(-{4,}|={4,}|#{3,}|`{3,})")),
 ]
