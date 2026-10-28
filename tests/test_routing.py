@@ -61,6 +61,12 @@ def test_missing_order_id_asks_instead_of_guessing():
     assert r.action == "ask_for_info" and r.missing == ["order_id", "photos"]
 
 
+def test_empty_ticket_asks_what_is_needed():
+    t = make_ticket("1", "northwind", "", subject="")
+    r = route(t, tri(category="other"), passages("NW-KB-04", 0.6, 0.59), NW, 0.5)
+    assert r.action == "ask_for_info" and r.missing == ["other"]
+
+
 def test_someone_elses_records_need_consent():
     t = make_ticket("1", "harbor", "Send me my son's records, his patient ID is HD-7777.", customer_ref="P-1234")
     r = route(t, tri(category="records_privacy"), [], HD, 0.5)

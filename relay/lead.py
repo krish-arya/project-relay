@@ -119,7 +119,7 @@ def route(ticket: Ticket, tri: TriageResult, passages: list[Passage], policy: Te
         action = "escalate"
         reasons.append("legal threat" if legal else "money dispute")
     else:
-        missing = policy.missing_details(ticket, category)
+        missing = ["other"] if not text.strip() else policy.missing_details(ticket, category)
         if missing:
             action, draft_mode = "ask_for_info", "ask_for_info"
             if "written_consent" in missing:

@@ -87,7 +87,7 @@ DETAIL_TEXT = {
     "photos": "clear photos of the problem",
     "written_consent": "the patient's written consent for us to share their records with you",
     "patient_identity": "your full name and registered email address or patient ID, so we can verify who you are",
-    "other": "the missing details",
+    "other": "a short description of what you need help with (your message reached us empty)",
 }
 
 
