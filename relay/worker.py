@@ -39,16 +39,25 @@ class Worker:
         self.gw = gw
         self.name = name or f"{socket.gethostname()}:{os.getpid()}"
 
-    def run_until_empty(self, *, max_jobs: int | None = None, poll_s: float = 0.5) -> dict[str, int]:
+    def run_until_empty(self, *, max_jobs: int | None = None, poll_s: float = 0.5,
+                        max_idle_s: float | None = None) -> dict[str, int]:
+        """Process jobs until none are queued or leased. max_idle_s stops waiting on
+        jobs this worker cannot claim (e.g. another worker's live lease)."""
         counts = {"done": 0, "retry": 0, "dead": 0}
+        idle_since: float | None = None
         while max_jobs is None or sum(counts.values()) < max_jobs:
             job = queue.claim(self.conn, self.name, self.settings.lease_s)
             if job is None:
                 pending = queue.stats(self.conn)
-                if pending.get("queued", 0) or pending.get("leased", 0):
-                    time.sleep(poll_s)  # retries waiting out their backoff, or another worker's lease
-                    continue
-                break
+                if not (pending.get("queued", 0) or pending.get("leased", 0)):
+                    break
+                idle_since = idle_since or time.monotonic()
+                if max_idle_s is not None and time.monotonic() - idle_since > max_idle_s:
+                    log(f"[worker] giving up after {max_idle_s}s idle; unclaimable jobs: {pending}")
+                    break
+                time.sleep(poll_s)  # retries waiting out their backoff, or another worker's lease
+                continue
+            idle_since = None
             counts[self.handle(job)] += 1
         return counts
 
